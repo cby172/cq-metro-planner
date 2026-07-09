@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>重庆轨道交通智能出行规划与可视化系统</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">信息处理综合实践课程设计 · 地铁线路规划项目</p>
+      <h1>重庆轨道交通智能出行规划与可视化系统</h1>
+      <p class="subtitle">拖入 line.txt 自动建图 · 中文站点模糊搜索 · 多策略路径规划 · 仿重庆线网图</p>
+    </div>
+    <div class="top-stats" id="topStats" aria-label="数据统计"></div>
+  </header>
+
+  <main class="shell">
+    <aside class="control-panel">
+      <section class="panel-block">
+        <div class="block-title">
+          <h2>1. 导入线路</h2>
+          <button id="resetDataButton" class="ghost-btn" type="button">恢复内置数据</button>
+        </div>
+        <div id="dropZone" class="drop-zone" tabindex="0">
+          <input id="fileInput" type="file" accept=".txt,text/plain">
+          <strong>拖入 line.txt</strong>
+          <span>或点击选择文件，支持“1号线：朝天门，小什字...”格式</span>
+        </div>
+        <div class="source-card">
+          <div class="source-row">
+            <span>当前数据</span>
+            <strong id="dataName">-</strong>
+          </div>
+          <p id="sourceInfo">-</p>
+          <button id="downloadLineButton" class="link-btn" type="button">下载当前 line.txt</button>
+        </div>
+      </section>
+
+      <section class="panel-block">
+        <h2>2. 查询路线</h2>
+        <label class="field">
+          <span>起点</span>
+          <input id="startInput" autocomplete="off" value="重庆交通大学" placeholder="输入站名，如：交通">
+          <div id="startSuggest" class="suggestions"></div>
+        </label>
+        <label class="field">
+          <span>终点</span>
+          <input id="endInput" autocomplete="off" value="朝天门" placeholder="输入站名，如：朝天门">
+          <div id="endSuggest" class="suggestions"></div>
+        </label>
+        <label class="field">
+          <span>规划条件</span>
+          <select id="strategySelect">
+            <option value="minStations">站数最少</option>
+            <option value="minTransfers" selected>换乘最少</option>
+            <option value="cheapest">花钱最少（估算）</option>
+            <option value="fastest">时间最短（估算）</option>
+          </select>
+        </label>
+        <div class="button-row">
+          <button id="planButton" class="primary-btn" type="button">查询路线</button>
+          <button id="swapButton" class="secondary-btn" type="button">交换</button>
+        </div>
+        <div class="button-row">
+          <button id="demoButton" class="secondary-btn" type="button">演示：交通大学 → 朝天门</button>
+        </div>
+        <div id="statusMessage" class="status-message"></div>
+      </section>
+
+      <section class="panel-block">
+        <h2>3. 路线统计</h2>
+        <div class="metric-grid">
+          <div><span>站数</span><strong id="stationCount">-</strong></div>
+          <div><span>换乘</span><strong id="transferCount">-</strong></div>
+          <div><span>距离</span><strong id="distanceValue">-</strong></div>
+          <div><span>票价</span><strong id="fareValue">-</strong></div>
+          <div class="wide"><span>时间</span><strong id="timeValue">-</strong></div>
+        </div>
+      </section>
+    </aside>
+
+    <section class="map-panel">
+      <div class="map-head">
+        <div>
+          <h2>重庆轨道交通线网图</h2>
+          <p>按重庆轨道线网的交错关系绘制折线示意图；点击站点填入起点/终点，查询后亮黄色高亮。</p>
+        </div>
+        <div class="map-actions">
+          <button id="zoomInButton" type="button" title="放大">+</button>
+          <button id="zoomOutButton" type="button" title="缩小">-</button>
+          <button id="resetViewButton" type="button">复位</button>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div id="mapViewport" class="map-viewport">
+        <svg id="metroMap" viewBox="0 0 1500 1040" aria-label="重庆轨道交通线路图"></svg>
+      </div>
+      <div class="map-hint">鼠标拖拽可平移，滚轮可缩放。换乘站为双圈，线路端点标注方向，亮黄色为当前路线。</div>
+    </section>
+
+    <section class="result-panel">
+      <div class="result-card comparison-card">
+        <h2>多方案对比</h2>
+        <p class="section-note">同一起终点自动比较不同规划条件，点击“应用”即可切换到对应路线。</p>
+        <div class="table-wrap compact-table">
+          <table>
+            <thead>
+              <tr>
+                <th>方案</th>
+                <th>站数</th>
+                <th>换乘</th>
+                <th>时间</th>
+                <th>票价</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="block-title">
+          <h2>路线输出</h2>
+          <button id="copyCourseButton" class="ghost-btn" type="button">复制</button>
+        </div>
+        <p id="courseOutput" class="course-output">查询后显示类似：3号线，重庆交通大学，六公里，...，转1号线，朝天门。</p>
+      </div>
+      <div class="result-card">
+        <h2>乘车说明</h2>
+        <ol id="plainGuide" class="plain-guide"></ol>
+      </div>
+      <div class="result-card">
+        <h2>路径明细</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>序号</th>
+                <th>站点</th>
+                <th>乘坐线路</th>
+              </tr>
+            </thead>
+            <tbody id="routeRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="result-card">
+        <h2>站点详情</h2>
+        <input id="stationFilter" class="filter-input" placeholder="输入站名或线路名查看详情">
+        <div id="stationDetail" class="station-detail"></div>
+        <ul id="stationList" class="station-list"></ul>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="metro_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
